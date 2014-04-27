@@ -119,6 +119,7 @@ function CubicVRSystem() {
 	
 	this.update = function(timer, gl) {		
 		
+		CLIENT.system.action.update();
 		CLIENT.system.motion.update();
 		
 		self.entities.forEach(function (entity) {
@@ -132,6 +133,7 @@ function CubicVRSystem() {
 		});
 		
 		self.scene.camera.x = CLIENT.player.position.x;
+		self.scene.camera.y = CLIENT.player.position.y + 5;
 		self.scene.camera.target[0] = CLIENT.player.position.x;
 		self.scene.camera.target[1] = CLIENT.player.position.y;
 		self.scene.camera.target[2] = CLIENT.player.position.z;
@@ -194,6 +196,8 @@ function InputSystem() {
 	
 	this.key = {};
 	
+	this.entityKeyAction = {};
+	
 	this.init = function() {
 		
 		document.addEventListener("keydown", this.keyDown);		
@@ -203,8 +207,15 @@ function InputSystem() {
 	
 	this.keyDown = function(event) {
 		
-		if (self.key[event.keyCode] != 1) {
-			self.key[event.keyCode] = 1;			
+		var value = 1;
+		
+		if (self.key[event.keyCode] != value) {
+			self.key[event.keyCode] = value;
+			if (self.entityKeyAction[event.keyCode]) {
+				self.entityKeyAction[event.keyCode].forEach(function(keyAction) {
+					keyAction.component[keyAction.action] = value;
+				});
+			}
 			event.preventDefault();
 			// Log.tail("Key " + event.keyCode, "pressed");
 		}
@@ -213,10 +224,15 @@ function InputSystem() {
 	
 	this.keyUp = function(event) {
 		
-		self.key[event.keyCode] = 0;
+		var value = 0;
+		
+		self.key[event.keyCode] = value;
+		if (self.entityKeyAction[event.keyCode]) {
+			self.entityKeyAction[event.keyCode].forEach(function(keyAction) {
+				keyAction.component[keyAction.action] = value;
+			});
+		}
 		event.preventDefault();
-		self.entities.forEach(function(entity) {
-		});
 		// Log.untail("Key " + event.keyCode);
 		
 	}
@@ -225,13 +241,42 @@ function InputSystem() {
 		
 		if (entity.input && entity.action) {
 			this.entities.push(entity);
-			// entity.input.map.forEach(function(input) {
-				
-			// });
+			for (var key in entity.input.keyActionMap) {
+				if (!self.entityKeyAction[key]) {
+					self.entityKeyAction[key] = [];
+				}
+				self.entityKeyAction[key].push({
+				  component : entity.action,
+				  action 	: entity.input.keyActionMap[key],
+				});
+			}
 		}
 		
 	}
 
+}
+function ActionSystem() {
+	
+	this.entities = [];
+	
+	this.update = function() {
+		
+		this.entities.forEach(function(entity) {
+			
+			entity.action.update(entity);
+			
+		});
+		
+	};
+	
+	this.addEntity = function(entity) {
+	
+		if (entity.action) {
+			this.entities.push(entity);
+		}
+		
+	};
+	
 }
 
 // Entity
@@ -325,14 +370,32 @@ function RenderComponent(scale) {
 	});
 	
 }
-function ActionComponent() {
+function PlayerActionComponent() {
 	
+	this.left 	= 0;
+	this.right 	= 0;
+	this.up 	= 0;
+	this.down 	= 0;
+	this.jump 	= 0;
 	
+	this.update = function(entity) {
+		
+		entity.motion.vx = (this.left - this.right)	* entity.motion.ax;
+		entity.motion.vz = (this.up - this.down)	* entity.motion.az;
+		
+		if (this.jump == 1) {
+			this.jump = 0;
+			if (entity.position.y == 0) {
+				entity.motion.vy = entity.motion.ay;
+			}
+		}
+		
+	};
 	
 }
-function InputComponent(binds) {
+function InputComponent(keyActionMap) {
 	
-	this.binds = binds;
+	this.keyActionMap = keyActionMap;
 	
 }
 
@@ -345,6 +408,7 @@ function GameClient() {
 	this.init = function() {
 		
 		this.system["input"] 	= new InputSystem();
+		this.system["action"]	= new ActionSystem();
 		this.system["motion"] 	= new MotionSystem();
 		this.system["cubicVR"] 	= new CubicVRSystem();
 
@@ -357,22 +421,22 @@ function GameClient() {
 		
 		this.player = new Entity("player", {
 		  "position"	: new PositionComponent([20.0, 10.0, 0.0]),
-		  "motion"		: new MotionComponent([0.0, 0.0, 0.0], [1.0, 10.0, 1.0]),
+		  "motion"		: new MotionComponent([0.0, 0.0, 0.0], [0.2, 1.0, 0.2]),
 		  "renderable"	: new RenderComponent([1.5, 2.5, 1.0]),
-		  "action"		: new ActionComponent(),
+		  "action"		: new PlayerActionComponent(),
 		  "input"		: new InputComponent({
-			
-			"37" : { action : "left", 	value : 0 },
-			"39" : { action : "right", 	value : 0 },
-			"38" : { action : "up", 	value : 0 },
-			"40" : { action : "down", 	value : 0 },
-			"32" : { action : "jump", 	value : 0 },
-		  
+			// key : action
+			"37" : "left",
+			"39" : "right",
+			"38" : "up",
+			"40" : "down",
+			"32" : "jump",		  
 		  }),
 		});
 
 		this.system.motion.addEntity(this.player);
 		this.system.input.addEntity(this.player);
+		this.system.action.addEntity(this.player);
 		this.system.cubicVR.addEntity(this.player);		
 		
 		CubicVR.MainLoop(this.system.cubicVR.update);
