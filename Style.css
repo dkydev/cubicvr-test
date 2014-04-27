@@ -1,0 +1,64 @@
+html, body {
+	padding:0px;
+	margin:0px;
+	color:white;
+	font:12px arial;
+}
+
+body {
+	background-color:black;
+}
+
+canvas {
+	float:left;
+	display:block;
+}
+
+div#container {
+
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+
+	display:block;
+	margin:20px auto 0px auto;
+	width:860px;
+	height:400px;
+}
+
+
+div#tail {
+	margin-right:2px;
+	width:218px;
+	height:400px;
+	float:left;
+	display:block;
+	background-color:#111;
+}
+
+div#log {
+	float:left;
+	margin:2px auto;
+	width:860px;
+	height:300px;
+	overflow-y:auto;
+	background-color:#111;
+}
+
+div.log {
+	background-color:#1B1B1B;
+	padding:4px 8px;
+	margin:2px;
+}
+div.success {
+	background-color:#31842d;
+}
+div.warning {
+	background-color:#847b2d;
+}
+div.error {
+	background-color:#772b2b;
+}
