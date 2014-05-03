@@ -119,7 +119,7 @@ function CubicVRSystem() {
 	}
 	
 	this.update = function(timer, gl) {		
-		
+		var seconds = timer.getSeconds();
 		CLIENT.system.action.update();
 		CLIENT.system.motion.update();
 		
@@ -133,6 +133,10 @@ function CubicVRSystem() {
 			entity.renderable.textObject.y = entity.position.y + 2;
 			entity.renderable.textObject.z = entity.position.z;
 			
+            Log.tail(entity.name + " texture", entity.renderable.object.getInstanceMaterials()[0].uvOffset)
+            
+            //entity.renderable.object.getInstanceMaterials()[0].uvOffset = [Math.cos(seconds+i),Math.sin(seconds+i)];
+            
 			Log.tail(entity.name, [entity.position.x.toFixed(2), entity.position.y.toFixed(2), entity.position.z.toFixed(2)].join(", "));
 			
 		});
@@ -143,6 +147,8 @@ function CubicVRSystem() {
 		self.scene.camera.target[1] = CLIENT.player.position.y;
 		self.scene.camera.target[2] = CLIENT.player.position.z;
 		
+        
+        
 		self.scene.render();
 		
 		Log.tail("camera", [self.scene.camera.x.toFixed(2), self.scene.camera.y.toFixed(2), self.scene.camera.z.toFixed(2)].join(", "));
@@ -204,10 +210,10 @@ function InputSystem() {
 	
 	this.entityKeyAction = {};
 	
-	this.init = function() {
+	this.init = function(element) {
 		
-		document.addEventListener("keydown", this.keyDown);		
-		document.addEventListener("keyup", this.keyUp);
+		element.addEventListener("keydown", this.keyDown);		
+		element.addEventListener("keyup", this.keyUp);
 		
 	};
 	
@@ -228,8 +234,9 @@ function InputSystem() {
 					}));
 				});
 			}
-			//event.preventDefault();
-			// Log.tail("Key " + event.keyCode, "pressed");
+			event.preventDefault();
+			return false;
+            // Log.tail("Key " + event.keyCode, "pressed");
 		}
 		
 	}
@@ -250,7 +257,8 @@ function InputSystem() {
 				}));
 			});
 		}
-		//event.preventDefault();
+		event.preventDefault();
+        return false;
 		// Log.untail("Key " + event.keyCode);
 		
 	}
@@ -362,7 +370,7 @@ function MotionComponent(velocity, acceleration) {
 	});
 
 }
-function RenderComponent(scale, name) {
+function RenderComponent(name) {
 	
 	// name text
 	var textTexture = new CubicVR.TextTexture(name, {
@@ -371,9 +379,9 @@ function RenderComponent(scale, name) {
 	});
 	var planeMaterial = new CubicVR.Material({
 	  //color : [0, 0, 1],
-	  bgcolor : "transparent",
 	  textures : {
-	    color : textTexture
+	    color : textTexture,
+        alpha : textTexture
 	  }
 	});
 	var planeMesh = CubicVR.primitives.plane({
@@ -394,27 +402,45 @@ function RenderComponent(scale, name) {
 	});
 	//
 	
+    this.texture = new CubicVR.Texture("images/spritesheet.png");
+    this.alpha = new CubicVR.Texture("images/spritesheet_alpha.png"),
+    
 	this.material = new CubicVR.Material({
 	  specular 		: [0.0, 0.0, 0.0],
-	  shininess 	: 0.9,
+	  shininess 	: 0.0,
 	  env_amount 	: 1.0,
 	  textures 		: {
-		color : new CubicVR.Texture("images/barrel.png"),
+		color : this.texture,
+        alpha : this.alpha,
 	  }
 	});
 	
-	this.mesh = CubicVR.primitives.plane({
-	  size 		: 1.0,
-	  material 	: this.material,
-	  uvmapper 	: {
-		projectionMode  : CubicVR.enums.uv.projection.PLANAR,
-		//scale 			: [1.0, 0.5, 1.0]
-	  }
-	}).prepare();
+    this.mesh = new CubicVR.Mesh({
+      primitive: {
+        type: "plane",
+        size: 1.0,
+        material: this.material,
+        uvmapper: {
+          projectionMode: "planar",
+          projectionAxis: "z",
+          scale: [10, 10, 10],
+        }
+      },
+      compile: true
+    });
+    
+	// this.mesh = CubicVR.primitives.plane({
+	  // size 		: 1.0,
+	  // material 	: this.material,
+	  // uvmapper 	: {
+		// projectionMode  : CubicVR.enums.uv.projection.PLANAR,
+		// scale 			: scale
+	  // }
+	// }).prepare();
 	
 	this.object = new CubicVR.SceneObject({
 	  mesh 		: this.mesh,
-	  scale 	: scale,
+	  scale 	: [1.4, 2.0, 1.0],
 	  position 	: [0.0, 0.0, 0.0],
 	});
 	
@@ -461,7 +487,7 @@ function GameClient() {
 		this.system["motion"] 	= new MotionSystem();
 		this.system["cubicVR"] 	= new CubicVRSystem();
 
-		this.system.input.init();
+		this.system.input.init(canvas);
 		this.system.cubicVR.init();
 		
 	};
@@ -477,7 +503,7 @@ function GameClient() {
 		var player = new Entity(id, name, {
 		  "position"	: new PositionComponent(position),
 		  "motion"		: new MotionComponent([0.0, 0.0, 0.0], [0.2, 1.0, 0.2]),
-		  "renderable"	: new RenderComponent([1.5, 2.5, 1.0], name),
+		  "renderable"	: new RenderComponent(name),
 		  "action"		: new PlayerActionComponent(),
 		});
 		
@@ -490,6 +516,9 @@ function GameClient() {
 	};
 	
 }
+
+var canvas = $("#canvas")[0];
+canvas.tabIndex = 1;
 
 var GAME_HAS_STARTED = false;
 
@@ -514,8 +543,10 @@ var enterEvent = function(e) {
 		}
 		$("#input").val("");
 	}
+    return false;
 }
-document.addEventListener("keydown", enterEvent);
+$("#input")[0].addEventListener("keydown", enterEvent);
+
 //
 //
 function start(playerName) {
@@ -585,3 +616,4 @@ function start(playerName) {
 }
 //
 //
+start("Nick" + Math.round(Math.random()*10000000000));
