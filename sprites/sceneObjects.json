@@ -1,0 +1,10 @@
+[{
+    name: "the_box",
+    position: [0.0,0.0,0.0],
+    mesh: "mesh.json"
+},{
+    name: "another_box",
+    position: [0.0,1.0,1.5],
+    scale: [1.0,2.0,1.0],
+    mesh: "mesh.json"
+}]
